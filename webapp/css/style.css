@@ -1,0 +1,14 @@
+/* Enter your custom styles here *//* Enter your custom styles here */
+@media (min-width: 80rem) {
+    .sapUiMedia-Std-Desktop .sapUShellApplicationContainer.sapUShellApplicationContainerLimitedWidth {
+        width: 100%!important;
+    }
+}
+
+
+[id$="--GIProduction--_IDGenTitle1"],
+[id$="--GRProduction--_IDGenTitle3"],
+[id$="--GRProduction--_IDGenTitle4"],
+[id$="--GIProduction--_IDGenTitle2"]{
+    display: none!important;
+}

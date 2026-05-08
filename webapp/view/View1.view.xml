@@ -1,0 +1,51 @@
+<mvc:View
+    controllerName="zmigo.controller.View1"
+    xmlns:mvc="sap.ui.core.mvc"
+    displayBlock="true"
+    xmlns="sap.m"
+    xmlns:f="sap.f"
+    xmlns:layout="sap.ui.layout">
+    
+    <Page id="_IDGenPage1" showHeader="false" backgroundDesign="List">
+        <content>
+            <VBox id="_IDGenVBox" class="sapUiSmallMargin">
+                
+                <Title id="_IDGenTitle" text="Select Process" titleStyle="H4" class="sapUiSmallMarginBottom" />
+
+                <layout:HorizontalLayout id="_IDGenHorizontalLayout" allowWrapping="true">
+                    
+                    <GenericTile id="_IDGenGenericTile1" 
+                        header="Goods Issue" 
+                        subheader="Production Order" 
+                        press="onNavToGIProd" 
+                        class="sapUiTinyMarginEnd sapUiTinyMarginBottom">
+                        <TileContent id="_IDGenTileContent1">
+                            <ImageContent id="_IDGenImageContent1" src="sap-icon://paint-bucket" />
+                        </TileContent>
+                    </GenericTile>
+
+                    <GenericTile id="_IDGenGenericTile" 
+                        header="Goods Receipt" 
+                        subheader="Production Order" 
+                        press="onNavToGRProd" 
+                        class="sapUiTinyMarginEnd sapUiTinyMarginBottom">
+                        <TileContent id="_IDGenTileContent">
+                            <ImageContent id="_IDGenImageContent" src="sap-icon://factory" />
+                        </TileContent>
+                    </GenericTile>
+
+                    <GenericTile id="_IDGenGenericTile2" 
+                        header="Goods Receipt" 
+                        subheader="Purchase Order" 
+                        press="onNavToGRPur" 
+                        class="sapUiTinyMarginBottom">
+                        <TileContent id="_IDGenTileContent2">
+                            <ImageContent id="_IDGenImageContent2" src="sap-icon://cart" />
+                        </TileContent>
+                    </GenericTile>
+
+                </layout:HorizontalLayout>
+            </VBox>
+        </content>
+    </Page>
+</mvc:View>

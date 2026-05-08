@@ -1,0 +1,168 @@
+{
+  "_version": "1.80.0",
+  "sap.app": {
+    "id": "zmigo",
+    "type": "application",
+    "i18n": "i18n/i18n.properties",
+    "applicationVersion": {
+      "version": "0.0.1"
+    },
+    "title": "{{appTitle}}",
+    "description": "{{appDescription}}",
+    "resources": "resources.json",
+    "sourceTemplate": {
+      "id": "@sap/generator-fiori:basic",
+      "version": "1.23.0",
+      "toolsId": "dd27f65f-336c-4a67-9054-3a29f304edbe"
+    },
+    "dataSources": {
+      "ZSB_PRODUCTIONORDER_VAN": {
+        "uri": "/sap/opu/odata/IWFND/CATALOGSERVICE;v=2/Annotations(TechnicalName='ZSB_PRODUCTIONORDER_VAN',Version='0001')/$value/",
+        "type": "ODataAnnotation",
+        "settings": {
+          "localUri": "localService/mainService/ZSB_PRODUCTIONORDER_VAN.xml"
+        }
+      },
+      "mainService": {
+        "uri": "/sap/opu/odata/sap/ZSB_PRODUCTIONORDER/",
+        "type": "OData",
+        "settings": {
+          "annotations": [
+            "ZSB_PRODUCTIONORDER_VAN"
+          ],
+          "localUri": "localService/mainService/metadata.xml",
+          "odataVersion": "2.0"
+        }
+      }
+    },
+    "crossNavigation": {
+      "inbounds": {
+        "ZMIGO-DISPLAY": {
+          "semanticObject": "ZMIGO",
+          "action": "DISPLAY",
+          "title": "{{ZMIGO-DISPLAY.flpTitle}}",
+          "subTitle": "{{ZMIGO-DISPLAY.flpSubtitle}}",
+          "signature": {
+            "parameters": {},
+            "additionalParameters": "allowed"
+          }
+        }
+      }
+    }
+  },
+  "sap.ui": {
+    "technology": "UI5",
+    "deviceTypes": {
+      "desktop": true,
+      "tablet": true,
+      "phone": true
+    }
+  },
+  "sap.ui5": {
+    "flexEnabled": true,
+    "fullWidth": true,
+    "config": {
+      "fullWidth": true
+    },
+    "dependencies": {
+      "minUI5Version": "1.142.12",
+      "libs": {
+        "sap.m": {},
+        "sap.ui.core": {},
+        "sap.f": {},
+        "sap.ui.layout": {}
+      }
+    },
+    "contentDensities": {
+      "compact": true,
+      "cozy": true
+    },
+    "models": {
+      "i18n": {
+        "type": "sap.ui.model.resource.ResourceModel",
+        "settings": {
+          "bundleName": "zmigo.i18n.i18n"
+        }
+      },
+      "": {
+        "dataSource": "mainService",
+        "preload": true,
+        "settings": {}
+      }
+    },
+    "resources": {
+      "css": [
+        {
+          "uri": "css/style.css"
+        }
+      ]
+    },
+    "routing": {
+      "config": {
+        "routerClass": "sap.m.routing.Router",
+        "controlAggregation": "pages",
+        "controlId": "app",
+        "transition": "slide",
+        "type": "View",
+        "viewType": "XML",
+        "path": "zmigo.view",
+        "async": true,
+        "viewPath": "zmigo.view"
+      },
+      "routes": [
+        {
+          "name": "RouteView1",
+          "pattern": "",
+          "target": [
+            "TargetView1"
+          ]
+        },
+        {
+          "name": "RouteGRProduction",
+          "pattern": "gr-production",
+          "target": [
+            "TargetGRProduction"
+          ]
+        },
+        {
+          "name": "RouteGIProduction",
+          "pattern": "gi-production",
+          "target": [
+            "TargetGIProduction"
+          ]
+        },
+        {
+          "name": "RouteGRPurchase",
+          "pattern": "gr-purchase",
+          "target": [
+            "TargetGRPurchase"
+          ]
+        }
+      ],
+      "targets": {
+        "TargetView1": {
+          "id": "View1",
+          "name": "View1"
+        },
+        "TargetGRProduction": {
+          "id": "GRProduction",
+          "name": "GRProduction"
+        },
+        "TargetGIProduction": {
+          "id": "GIProduction",
+          "name": "GIProduction"
+        },
+        "TargetGRPurchase": {
+          "id": "GRPurchase",
+          "name": "GRPurchase"
+        }
+      }
+    },
+    "rootView": {
+      "viewName": "zmigo.view.App",
+      "type": "XML",
+      "id": "App",
+      "async": true
+    }
+  }
+}
