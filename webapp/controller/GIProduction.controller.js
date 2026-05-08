@@ -24,7 +24,29 @@ sap.ui.define([
     return Controller.extend("zmigo.controller.GIProduction", {
         onInit: function () {
             this._rebindHeader();
+            var oRouter = this.getOwnerComponent().getRouter();
+            oRouter.getRoute("RouteGIProduction") 
+           .attachMatched(this._onRouteMatched, this);
         },
+
+_onRouteMatched: function () {
+    this._selectedChars = {};
+    if (this._oOrderDialog) {
+        this._oOrderDialog.destroy();
+        this._oOrderDialog = null;
+    }
+    if (this._oBatchDialog) {
+        this._oBatchDialog.destroy();
+        this._oBatchDialog = null;
+    }
+    this.getView().byId("materialPanel").setExpanded(false);
+    this.getView().byId("itemPanel").setExpanded(true);
+    this.getView().byId("inOrder").setValueState("None");
+    this.getView().byId("_IDGenTable").clearSelection();
+    this.getView().byId("TreeTableBasic").clearSelection();
+    this.getView().byId("BatchClassificationTable").clearSelection();
+    this._rebindHeader();
+},
         onOrderChange: function (oEvent) {
             var sValue = oEvent.getParameter("value");
             var that = this;
@@ -405,22 +427,7 @@ sap.ui.define([
                     } else {
                         MessageBox.success(`Document is posted Successfully with No - ${result.MaterialDocument} and Year - ${result.MaterialDocumentYear}`);
                         that.getView().setBusy(false);
-                        var oModel = that.getView().getModel("Header");
-                        if (oModel) {
-                            oModel.setProperty("/ManufacturingOrder", "");
-                            oModel.setProperty("/DocumentDate", null);
-                            oModel.setProperty("/PostingDate", null);
-                            oModel.setProperty("/HeaderText", "");
-                            oModel.setProperty("/RefernceDocument", "");
-                            oModel.setProperty("/MoveType", "");
-                            oModel.setProperty("/ProdItems", []);
-                            oModel.setProperty("/ProdDividedItem", []);
-                            oModel.setProperty("/BatchClassifications", []);
-                        }
-                        that._selectedChars = {};
-                        that.getView().byId("materialPanel").setExpanded(false);
-                        that._rebindHeader();
-
+                        that._resetForm();
                         that._rebindHeader();
                     }
                 },
@@ -430,6 +437,28 @@ sap.ui.define([
                 }
             })
         },
+        _resetForm: function () {
+    var oModel = this.getView().getModel("Header");
+    oModel.setData({
+        ManufacturingOrder  : "",
+        DocumentDate        : null,
+        PostingDate         : null,
+        HeaderText          : "",
+        RefernceDocument    : "",
+        MoveType            : "",       
+        fieldsEnabled       : false,
+        ProdItems           : [],
+        ProdDividedItem     : [],
+        BatchClassifications: []
+    });
+    this._selectedChars = {};
+    this.getView().byId("materialPanel").setExpanded(false);
+    this.getView().byId("itemPanel").setExpanded(true);
+    this.getView().byId("inOrder").setValueState("None");
+    this.getView().byId("_IDGenTable").clearSelection();
+    this.getView().byId("TreeTableBasic").clearSelection();
+    this.getView().byId("BatchClassificationTable").clearSelection();
+},
         onCancel: function () {
             this._selectedChars = {};
 

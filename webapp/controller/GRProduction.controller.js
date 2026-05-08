@@ -222,24 +222,41 @@ sap.ui.define([
         },
 
         PalletChange: function (oEvent) {
-            let value = oEvent.getParameter("value");
-            let line = this.oViewModel.getProperty("/ProdItems");
+            // let value = oEvent.getParameter("value");
+            let value = parseInt(oEvent.getParameter("value")) || 0;
+
+            if (!this._originalProdItems) {
+                this._originalProdItems = JSON.parse(
+                    JSON.stringify(this.oViewModel.getProperty("/ProdItems") || [])
+                );
+            }
             let newLines = [];
 
+            // let line = this.oViewModel.getProperty("/ProdItems");
+            // let newLines = [];
+
+            // for (let index = 0; index < value; index++) {
+            //     newLines = [...newLines, ...line.map((data, idx) => {
+            //         return {
+            //             ...data,
+            //             index: newLines.length + index + idx
+            //         }
+            //     })];
+            // }
             for (let index = 0; index < value; index++) {
-                newLines = [...newLines, ...line.map((data, idx) => {
-                    return {
+                this._originalProdItems.forEach((data) => {
+                    newLines.push({
                         ...data,
-                        index: newLines.length + index + idx
-                    }
-                })];
+                        index: newLines.length
+                    });
+                });
             }
             this.oViewModel.setProperty("/ProdItems", newLines);
             this.qtyChange();
 
         },
         qtyChange: function () {
-            let line = this.oViewModel.getProperty("/ProdItems");
+            let line = this.oViewModel.getProperty("/ProdItems") || [];
             let filledQty = 0
             line.map((data) => {
                 filledQty += Number(data.Quantity);
@@ -263,6 +280,7 @@ sap.ui.define([
                         MessageBox.error(result.ErrorMessage);
                     } else {
                         sap.m.MessageToast.show("Batches Generated Successfully");
+                        that.getView().byId("_IDGenInput13").setEditable(false);
                         const aItems = result.Items.map(item => {
                             const oItem = { ...item };
                             const aCharcs = result.BatchClassifications.filter(c =>
@@ -275,7 +293,6 @@ sap.ui.define([
                         });
                         that.oViewModel.setProperty("/ProdItems", aItems);
 
-                        // Get unique characteristic names for column generation
                         if (result.BatchClassifications) {
                             const aCharacteristics = [
                                 ...new Map(
@@ -310,6 +327,7 @@ sap.ui.define([
                         }
                     }
                     that.getView().setBusy(false);
+
                 },
                 error: function (result) {
                     console.log(result);
@@ -432,10 +450,39 @@ sap.ui.define([
         },
         onCancel: function () {
             this._selectedChars = {};
+            this._originalProdItems = null;
+            var oModel = this.getView().getModel("Header");
+            if (oModel) {
+                oModel.setProperty("/ManufacturingOrder", "");
+                oModel.setProperty("/DocumentDate", null);
+                oModel.setProperty("/PostingDate", null);
+                oModel.setProperty("/HeaderText", "");
+                oModel.setProperty("/RefernceDocument", "");
+                oModel.setProperty("/MoveType", "");
+                oModel.setProperty("/DistQty", "");
+                oModel.setProperty("/FilledQty", 0);
+                oModel.setProperty("/AllOverQty", 0);
+                oModel.setProperty("/ProdItems", []);
+            }
+            var oInput = this.getView().byId("_IDGenInput13");
+            if (oInput) {
+                oInput.setEditable(true);
+            }
+            var oTable = this.getView().byId("_IDGenTable1");
+            if (oTable) {
+                oTable.getColumns().forEach(function (col) {
+                    if (col.data("dynamic")) {
+                        oTable.removeColumn(col);
+                    }
+                });
+            }
+            var oPanel = this.getView().byId("_IDGenPanel3");
+            if (oPanel) {
+                oPanel.setExpanded(false);
+            }
+            this._rebindHeader();
             var oRouter = this.getOwnerComponent().getRouter();
             oRouter.navTo("RouteView1", {}, true);
-
         },
-
     });
 });
