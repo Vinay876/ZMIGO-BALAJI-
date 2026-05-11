@@ -63,6 +63,7 @@ sap.ui.define([
 
             this.oViewModel.setProperty("/ManufacturingOrder", sOrder);
             this.oViewModel.setProperty("/OrderType", sType);
+            this.oViewModel.setProperty("/orderSelected", true);
             this.oViewModel.setProperty("/DocumentDate", sFormattedDate);
             this.oViewModel.setProperty("/PostingDate", sFormattedDate);
             this.oViewModel.setProperty("/MoveType", "101");
@@ -76,23 +77,34 @@ sap.ui.define([
                 success: function (oData) {
                     oView.setBusy(false);
 
-                    let overallQty = 0
+                    let overallQty = 0,
+                        confirmedQty = 0
                     var aHeaderTableItems = oData.results.map(function (item) {
-                        overallQty += Number(item.PlannedTotalQty);
+                        overallQty += parseFloat(item.PlannedTotalQty) || 0
+                        confirmedQty += Number(item.ConfirmedTotalQty);
                         return {
                             Material: item.Product,
                             ProductName: item.ProductName,
-                            Quantity: item.PlannedTotalQty,
+                            Quantity: '',
                             Unit: item.ProductionUnit,
                             MoveType: item.GoodsMovementType,
                             Location: item.StorageLocation,
                             Batch: item.Batch,
                             Plant: item.Plant,
-                            ManufacturingOrder: item.ProductionOrder
+                            ManufacturingOrder: item.ProductionOrder,
+                            QuantityNumerator: item.QuantityNumerator,
+                            QuantityDenominator: item.QuantityDenominator,
+                            AlternativeUnit: item.AlternativeUnit,
                         };
                     });
-                    that.oViewModel.setProperty("/ProdItems", aHeaderTableItems)
+                    console.log("overallQty:", overallQty);
                     that.oViewModel.setProperty("/AllOverQty", overallQty)
+                    that.oViewModel.setProperty("/ConfirmedTotalQty", confirmedQty)
+                    for (let index = 0; index < aHeaderTableItems.length; index++) {
+                        that.GenerateBatches(aHeaderTableItems[index])
+                    }
+
+                    oView.setBusy(false);
                     oView.byId("_IDGenPanel3").setExpanded(true);
                 },
                 error: function () {
@@ -110,18 +122,32 @@ sap.ui.define([
                 ManufacturingOrder: "",
                 RefernceDocument: "",
                 fieldsEnabled: true,
+                orderSelected: false,
                 MoveType: "",
                 DistQty: 0,
                 AllOverQty: 0,
                 FilledQty: 0,
                 ProdItems: [],
-                BatchClassifications: []
+                BatchClassifications: [],
+                ProdItemsCount: 0
             };
 
             this.oViewModel = new JSONModel(oData);
             this.getView().setModel(this.oViewModel, "Header");
         },
+        _updateProdItemsCount: function () {
+            var iCount = (this.oViewModel.getProperty("/ProdItems") || []).length;
+            this.oViewModel.setProperty("/ProdItemsCount", iCount);
 
+        },
+
+        _updateFilledQty: function () {
+            var aProdItems = this.oViewModel.getProperty("/ProdItems") || [];
+            var fTotal = aProdItems.reduce(function (sum, item) {
+                return sum + (parseFloat(item.Quantity) || 0);
+            }, 0);
+            this.oViewModel.setProperty("/FilledQty", fTotal);
+        },
         onPOValueHelp: function () {
             var oView = this.getView();
             var that = this;
@@ -138,6 +164,16 @@ sap.ui.define([
                         if (aTokens.length > 0) {
                             var sSelectedPO = aTokens[0].getKey();
                             var sSelectedType = aTokens[0].getText();
+
+                            var oSelected = that._aProdOrderResults &&
+                                that._aProdOrderResults.find(function (o) {
+                                    return o.ManufacturingOrder === sSelectedPO;
+                                });
+
+                            if (oSelected && oSelected.WorkCenter) {
+                                that.oViewModel.setProperty("/WorkCenter", oSelected.WorkCenter);
+                            }
+
                             that._fillHeaderFields(sSelectedPO, sSelectedType);
                         }
                         this.close();
@@ -159,12 +195,26 @@ sap.ui.define([
                             name: "OrderType",
                             label: "Production Order Type",
                             control: new sap.m.Input()
+                        }),
+                        new sap.ui.comp.filterbar.FilterGroupItem({
+                            groupName: "G1",
+                            name: "Material",
+                            label: "Product",
+                            control: new sap.m.Input()
+                        }),
+                        new sap.ui.comp.filterbar.FilterGroupItem({
+                            groupName: "G1",
+                            name: "ProductName",
+                            label: "Product Description",
+                            control: new sap.m.Input()
                         })
                     ],
                     search: function (oEvt) {
                         var aSelectionSet = oEvt.getParameter("selectionSet");
                         var sOrder = aSelectionSet[0].getValue().toLowerCase();
                         var sType = aSelectionSet[1].getValue().toLowerCase();
+                        var sMaterial = aSelectionSet[2].getValue().toLowerCase();
+                        var sMaterialName = aSelectionSet[3].getValue().toLowerCase();
 
                         var oTable = that._oOrderDialog.getTable();
                         oTable.setSelectionMode("Single");
@@ -177,6 +227,12 @@ sap.ui.define([
                         if (sType) {
                             aFilters.push(new sap.ui.model.Filter("OrderType", sap.ui.model.FilterOperator.Contains, sType));
                         }
+                        if (sMaterial) {
+                            aFilters.push(new sap.ui.model.Filter("Material", sap.ui.model.FilterOperator.Contains, sMaterial));
+                        }
+                        if (sMaterialName) {
+                            aFilters.push(new sap.ui.model.Filter("ProductName", sap.ui.model.FilterOperator.Contains, sMaterialName));
+                        }
 
                         oBinding.filter(aFilters);
                     }
@@ -188,10 +244,28 @@ sap.ui.define([
                 var oColModel = new JSONModel({
                     cols: [
                         { label: "Production Order", template: "ManufacturingOrder" },
-                        { label: "Production Order Type", template: "OrderType" }
+                        { label: "Production Order Type", template: "OrderType" },
+                        { label: "Product", template: "Material" },
+                        { label: "Product Description", template: "ProductName" },
                     ]
                 });
                 oTable.setModel(oColModel, "columns");
+                var oDateColumn = new sap.ui.table.Column({
+                    label: new sap.m.Label({ text: "Production Order Date" }),
+                    template: new sap.m.Text({
+                        text: {
+                            path: "PoDate",
+                            formatter: function (sValue) {
+                                if (!sValue) return "";
+                                var oDate = new Date(sValue);
+                                var oFormatter = DateFormat.getDateInstance({ pattern: "dd-MM-yyyy" });
+                                return oFormatter.format(oDate);
+                            }
+                        }
+                    }),
+                    width: "14rem"
+                });
+                oTable.addColumn(oDateColumn);
             }
 
 
@@ -203,6 +277,8 @@ sap.ui.define([
                     var oLocalModel = new JSONModel({
                         results: oData.results
                     });
+
+                    that._aProdOrderResults = oData.results;
 
                     var oTable = that._oOrderDialog.getTable();
                     oTable.setModel(oLocalModel);
@@ -221,57 +297,71 @@ sap.ui.define([
             });
         },
 
-        PalletChange: function (oEvent) {
-            // let value = oEvent.getParameter("value");
-            let value = parseInt(oEvent.getParameter("value")) || 0;
-
-            if (!this._originalProdItems) {
-                this._originalProdItems = JSON.parse(
-                    JSON.stringify(this.oViewModel.getProperty("/ProdItems") || [])
-                );
-            }
-            let newLines = [];
-
-            // let line = this.oViewModel.getProperty("/ProdItems");
-            // let newLines = [];
-
-            // for (let index = 0; index < value; index++) {
-            //     newLines = [...newLines, ...line.map((data, idx) => {
-            //         return {
-            //             ...data,
-            //             index: newLines.length + index + idx
-            //         }
-            //     })];
-            // }
-            for (let index = 0; index < value; index++) {
-                this._originalProdItems.forEach((data) => {
-                    newLines.push({
-                        ...data,
-                        index: newLines.length
-                    });
-                });
-            }
-            this.oViewModel.setProperty("/ProdItems", newLines);
-            this.qtyChange();
-
-        },
-        qtyChange: function () {
-            let line = this.oViewModel.getProperty("/ProdItems") || [];
-            let filledQty = 0
-            line.map((data) => {
-                filledQty += Number(data.Quantity);
-                return data
-            })
-            this.oViewModel.setProperty("/FilledQty", filledQty);
-        },
-
-        GenerateBatches: function () {
+        _loadBatchCharacteristics: function (aItems) {
             var that = this;
+            if (!aItems || aItems.length === 0) return;
+
+            var aMaterials = [...new Set(aItems.map(item => item.Material))];
+
             that.getView().setBusy(true);
+
             $.ajax({
                 url: `/sap/bc/http/sap/ZHTTP_CREATEBATCH`,
                 method: "POST",
-                data: JSON.stringify(this.oViewModel.getProperty("/ProdItems")),
+                data: JSON.stringify(aItems),
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                success: function (result) {
+                    that.getView().setBusy(false);
+
+                    if (result.ErrorMessage) {
+                        return;
+                    }
+
+                    if (result.BatchClassifications && result.BatchClassifications.length > 0) {
+                        const aCharacteristics = [
+                            ...new Map(
+                                result.BatchClassifications.map(c => [c.CharcDescription, c.CharcValue])
+                            ).entries()
+                        ];
+
+                        const oBatchClassMap = {};
+                        result.BatchClassifications.forEach(c => {
+                            const sKey = c.Material + "_" + c.Batch;
+                            if (!oBatchClassMap[sKey]) {
+                                oBatchClassMap[sKey] = [];
+                            }
+                            const bExists = oBatchClassMap[sKey].some(
+                                x => x.CharcInternalID === c.CharcInternalID
+                            );
+                            if (!bExists) {
+                                oBatchClassMap[sKey].push({
+                                    CharcInternalID: c.CharcInternalID,
+                                    Characteristic: c.Characteristic,
+                                    CharcDescription: c.CharcDescription
+                                });
+                            }
+                        });
+
+                        that.oViewModel.setProperty("/BatchClassMap", oBatchClassMap);
+                        that._addDynamicColumns(aCharacteristics);
+                    }
+                },
+                error: function () {
+                    that.getView().setBusy(false);
+                }
+            });
+        },
+        GenerateBatches: function (currData) {
+            var that = this;
+            that.getView().setBusy(true);
+            var oPreservedData = { ...currData };
+
+            $.ajax({
+                url: `/sap/bc/http/sap/ZHTTP_CREATEBATCH`,
+                method: "POST",
+                data: JSON.stringify([currData]),
                 headers: {
                     "Content-Type": "application/json"
                 },
@@ -280,61 +370,58 @@ sap.ui.define([
                         MessageBox.error(result.ErrorMessage);
                     } else {
                         sap.m.MessageToast.show("Batches Generated Successfully");
-                        that.getView().byId("_IDGenInput13").setEditable(false);
-                        const aItems = result.Items.map(item => {
-                            const oItem = { ...item };
-                            const aCharcs = result.BatchClassifications.filter(c =>
-                                c.Material === item.Material && c.Batch === item.Batch
-                            );
-                            aCharcs.forEach(c => {
-                                oItem[c.CharcDescription] = c.CharcValue;
-                            });
-                            return oItem;
+                        currData.Batch = result.Items[0].Batch;
+
+                        const aCharcs = result.BatchClassifications.filter(c =>
+                            c.Material === currData.Material.padStart(18, "0") && c.Batch === currData.Batch
+                        );
+
+                        aCharcs.forEach(c => {
+                            var sField = c.CharcDescription.replace("/", "YTYZ");
+                            currData[sField] = oPreservedData[sField] || c.CharcValue;
                         });
-                        that.oViewModel.setProperty("/ProdItems", aItems);
+
+                        let prodItems = that.oViewModel.getProperty("/ProdItems") || [];
+                        prodItems.push(currData);
+                        that.oViewModel.setProperty("/ProdItems", [...prodItems]);
+                        that._updateProdItemsCount();
 
                         if (result.BatchClassifications) {
                             const aCharacteristics = [
                                 ...new Map(
-                                    result.BatchClassifications.map(c => [c.CharcDescription, c.CharcValue])
+                                    result.BatchClassifications.map(c => [c.CharcDescription.replace("/", "YTYZ"), c.CharcValue])
                                 ).entries()
                             ];
-                            const oBatchClassMap = {};
+                            const oBatchClassMap = that.oViewModel.getProperty("/BatchClassMap") || {};
 
                             result.BatchClassifications.forEach(c => {
                                 const sKey = c.Material + "_" + c.Batch;
                                 if (!oBatchClassMap[sKey]) {
                                     oBatchClassMap[sKey] = [];
                                 }
-
-                                // Avoid duplicate characteristics per material+batch
                                 const bExists = oBatchClassMap[sKey].some(
                                     x => x.CharcInternalID === c.CharcInternalID
                                 );
-
                                 if (!bExists) {
                                     oBatchClassMap[sKey].push({
                                         CharcInternalID: c.CharcInternalID,
                                         Characteristic: c.Characteristic,
-                                        CharcDescription: c.CharcDescription
+                                        CharcDescription: c.CharcDescription.replace("/", "YTYZ")
                                     });
                                 }
                             });
 
                             that.oViewModel.setProperty("/BatchClassMap", oBatchClassMap);
-
                             that._addDynamicColumns(aCharacteristics);
                         }
                     }
                     that.getView().setBusy(false);
-
                 },
                 error: function (result) {
                     console.log(result);
                     that.getView().setBusy(false);
                 }
-            })
-
+            });
         },
 
         _preparePayload: function () {
@@ -365,7 +452,7 @@ sap.ui.define([
                             Batch: oItem.Batch,
                             CharcInternalID: oCharMeta.CharcInternalID,
                             Characteristic: oCharMeta.Characteristic,
-                            CharcDescription: oCharMeta.CharcDescription,
+                            CharcDescription: oCharMeta.CharcDescription.replace("YTYZ", "/"),
                             CharcValue: oItem[oCharMeta.CharcDescription] ?? ""
                         });
                     });
@@ -388,12 +475,21 @@ sap.ui.define([
             });
 
             aCharacteristics.forEach(([CharcDescription, CharcValue]) => {
+                const bIsWeightField = CharcDescription === "Gross weight" || CharcDescription === "Core weight";
+
+                const oInput = new sap.m.Input({
+                    value: `{Header>${CharcDescription}}`,
+                    submit: this.onRowEnter.bind(this)
+                });
+
+                if (bIsWeightField) {
+                    oInput.attachChange(this._onWeightChange.bind(this));
+                }
+
                 const oColumn = new sap.ui.table.Column({
-                    width: "14rem",
-                    label: new sap.m.Label({ text: CharcDescription }),
-                    template: new sap.m.Input({
-                        value: `{Header>${CharcDescription}}`
-                    })
+                    width: "8rem",
+                    label: new sap.m.Label({ text: CharcDescription.replace("YTYZ", "/") }),
+                    template: oInput
                 });
                 oColumn.data("dynamic", true);
 
@@ -401,6 +497,70 @@ sap.ui.define([
             });
         },
 
+        _onWeightChange: function (oEvent) {
+            var oInput = oEvent.getSource();
+            var oContext = oInput.getBindingContext("Header");
+            var sPath = oContext.getPath();
+            var iIndex = parseInt(sPath.split("/").pop());
+
+            var aProdItems = this.oViewModel.getProperty("/ProdItems") || [];
+            var oItem = aProdItems[iIndex];
+
+            var fGross = parseFloat(oItem["Gross weight"]) || 0;
+            var fCore = parseFloat(oItem["Core weight"]) || 0;
+            if (fGross > 0 && fCore > 0) {
+                oItem.Quantity = (fGross - fCore).toString();
+                oItem.ConvertedQuantity = (Number(oItem.Quantity) / ((Number(oItem.QuantityNumerator) || 1) / (Number(oItem.QuantityDenominator) || 1))).toFixed(3);
+            }
+
+            aProdItems[iIndex] = oItem;
+            this.oViewModel.setProperty("/ProdItems", aProdItems)
+            this._updateFilledQty();
+        },
+
+        onRowEnter: function (oEvent) {
+            var oProdItems = this.oViewModel.getProperty("/ProdItems") || [];
+
+            if (oProdItems.length === 0) return;
+
+            // update current item
+            let curSpath = oEvent.getSource().getParent().getBindingContext("Header").getPath();
+            let currItem = this.oViewModel.getProperty(curSpath);
+            let iCurrentIndex = parseInt(curSpath.split("/").pop());
+
+            this.oViewModel.setProperty(curSpath + "/Quantity", Number(currItem["Gross weight"]) ? Number(currItem["Gross weight"]) - Number(currItem["Core weight"]) : Number(currItem.Quantity));
+            this._updateFilledQty();
+            this.oViewModel.setProperty(curSpath + "/ConvertedQuantity", currItem.AlternativeUnit ? (Number(currItem.Quantity) / ((Number(currItem.QuantityNumerator) || 1) / (Number(currItem.QuantityDenominator) || 1))).toFixed(3) : "");
+
+            // ← Previous item lo (current ke pehle wala)
+            var iPrevIndex = iCurrentIndex - 1;
+            var oPrevItem = iPrevIndex >= 0 ? oProdItems[iPrevIndex] : currItem; // fallback to currItem if first row
+
+            // Dynamic columns ka data nikalo previous item se
+            var oBatchClassMap = this.oViewModel.getProperty("/BatchClassMap") || {};
+            var sKey = oPrevItem.Material.padStart(18, "0") + "_" + oPrevItem.Batch;
+            var aDynamicChars = oBatchClassMap[sKey] || [];
+
+            var oDynamicData = {};
+            aDynamicChars.forEach(function (oChar) {
+                var sField = oChar.CharcDescription;
+                oDynamicData[sField] = oPrevItem[sField] || ""; // ← previous item se copy
+            });
+
+            // new line — previous row copy + excluded fields blank
+            var oNewLine = {
+                ...oPrevItem,             // ← previous item ka data
+                ...oDynamicData,          // ← previous item ke dynamic fields
+                Batch: "",
+                Quantity: "",
+                ConvertedQuantity: "",
+                "Gross weight": "",
+                "Core weight": "",
+                index: oProdItems.length + 1
+            };
+
+            this.GenerateBatches(oNewLine);
+        },
         _removeDynamicColumns: function () {
             const oTable = this.byId("_IDGenTable1");
             const aExisting = oTable.getColumns();
@@ -412,10 +572,7 @@ sap.ui.define([
         },
         onPost() {
             var that = this;
-            if (Number(this.oViewModel.getProperty("/AllOverQty")) < Number(this.oViewModel.getProperty("/FilledQty"))) {
-                MessageBox.error("Filled Qty cannot be greater than Material Qty.")
-                return
-            }
+
             let data = {
                 ...this.oViewModel.getProperty("/"),
                 ...this._preparePayload()
@@ -432,15 +589,19 @@ sap.ui.define([
                     "Content-Type": "application/json"
                 },
                 success: function (result) {
+                    that.getView().setBusy(false);
                     if (result.ErrorMessage) {
                         MessageBox.error(result.ErrorMessage);
                     } else {
-                        MessageBox.success(`Document is posted Successfully with No - ${result.MaterialDocument} and Year - ${result.MaterialDocumentYear}`);
-                        that._removeDynamicColumns();
-
-                        that._rebindHeader();
+                        MessageBox.success(`Document is posted Successfully with No - ${result.MaterialDocument} and Year - ${result.MaterialDocumentYear}`, {
+                            onClose: function () {
+                                that._removeDynamicColumns();
+                                that._rebindHeader();
+                                var oRouter = that.getOwnerComponent().getRouter();
+                                oRouter.navTo("RouteView1", {}, true);
+                            }
+                        });
                     }
-                    that.getView().setBusy(false);
                 },
                 error: function (result) {
                     console.log(result);
@@ -483,6 +644,29 @@ sap.ui.define([
             this._rebindHeader();
             var oRouter = this.getOwnerComponent().getRouter();
             oRouter.navTo("RouteView1", {}, true);
+        },
+        onDeleteRow: function () {
+            var oTable = this.byId("_IDGenTable1");
+            var aSelectedIndices = oTable.getSelectedIndices();
+
+            if (aSelectedIndices.length === 0) {
+                sap.m.MessageToast.show("Please select a row to delete.");
+                return;
+            }
+
+            var aProdItems = this.oViewModel.getProperty("/ProdItems") || [];
+            aSelectedIndices.reverse().forEach(function (iIndex) {
+                aProdItems.splice(iIndex, 1);
+            });
+            aProdItems.forEach(function (item, i) {
+                item.index = i;
+            });
+
+            this.oViewModel.setProperty("/ProdItems", aProdItems);
+            this._updateFilledQty();
+            oTable.clearSelection();
+            this._updateProdItemsCount();
+            this.qtyChange();
         },
     });
 });

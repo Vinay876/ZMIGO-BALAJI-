@@ -49,6 +49,7 @@
                                 width="100%"
                                 value="{Header>/ManufacturingOrder}"
                                 showValueHelp="true"
+                                editable="{= !${Header>/orderSelected}}"
                                 required="true"
                                 valueHelpRequest=".onPOValueHelp"
                             />
@@ -84,7 +85,7 @@
                             <m:Input
                                 id="_IDGenInput13"
                                 change="PalletChange"
-                                value="{Header>/DistQty}"
+                                value="{Header>/FilledQty}"
                             />
 
                             <core:Title
@@ -102,10 +103,19 @@
                                 value="{Header>/MoveType}"
                                 editable="false"
                             />
+                            <m:Label
+                                id="_IDGenLabel261"
+                                text="Department"
+                            />
+                            <m:Input
+                                id="_IDGenInput101"
+                                value="{Header>/WorkCenter}"
+                                editable="false"
+                            />
 
                             <m:Label
                                 id="_IDGenLabel25"
-                                text="Doc. Header Text"
+                                text="Machine Number"
                             />
                             <m:Input
                                 id="_IDGenInput9"
@@ -114,12 +124,23 @@
 
                             <m:Label
                                 id="_IDGenLabel26"
-                                text="Delivery Note"
+                                text="Shift"
                             />
                             <m:Input
                                 id="_IDGenInput10"
                                 value="{Header>/RefernceDocument}"
                             />
+
+                            <!-- <m:Label
+                                id="_IDGenLabel261"
+                                text="PO Date"
+                            />
+                            <m:DatePicker
+                                id="_IDGenInput101"
+                                value="{Header>/PODate}"
+                                valueFormat="yyyy-MM-ddTHH:mm:ss"
+                                displayFormat="dd-MM-yyyy"
+                            /> -->
 
                             <!-- <m:Label
                                 
@@ -136,7 +157,7 @@
 
             <m:Panel
                 id="_IDGenPanel3"
-                headerText="Material Details"
+                headerText="{= 'Material Details (' + ${Header>/ProdItemsCount} + ')'}"
                 expandable="true"
                 expanded="false"
                 class="sapUiResponsiveMargin"
@@ -152,14 +173,32 @@
                             <m:OverflowToolbar id="_IDGenOverflowToolbar2">
                                 <m:ToolbarSpacer id="_IDGenToolbarSpacer1" />
                                 <m:Text
-                                    id="_IDGenText18"
-                                    text="Qty - {Header>/FilledQty} / {Header>/AllOverQty}"
+                                    id="_IDGenText13"
+                                    text="Confirmed Qty - {Header>/ConfirmedTotalQty}"
                                 />
-                                <m:Button
+                                <m:ToolbarSeparator
+                                    id="_IDGenToolbarSeparator1"
+                                />
+                                <m:Text
+                                    id="_IDGenText18"
+                                    text="Total Required Qty - {Header>/FilledQty} / {Header>/AllOverQty}"
+                                />
+                                <m:ToolbarSeparator
+                                    id="_IDGenToolbarSeparator2"
+                                />
+
+                                <!-- <m:Button
                                     id="_IDGenButton5"
                                     text="Generate Batch"
                                     press="GenerateBatches"
                                     type="Emphasized"
+                                /> -->
+                                <m:Button
+                                    id="_IDGenButtonDelete"
+                                    text="Delete"
+                                    icon="sap-icon://delete"
+                                    type="Reject"
+                                    press="onDeleteRow"
                                 />
                             </m:OverflowToolbar>
                         </table:extension>
@@ -172,7 +211,7 @@
                         <table:columns>
                             <table:Column
                                 id="_IDGenColumn12"
-                                width="12rem"
+                                width="7rem"
                             >
                                 <m:Label
                                     id="_IDGenLabel27"
@@ -187,7 +226,7 @@
                             </table:Column>
                             <table:Column
                                 id="_IDGenColumn26"
-                                width="12rem"
+                                width="8rem"
                             >
                                 <m:Label
                                     id="_IDGenLabel36"
@@ -202,7 +241,7 @@
                             </table:Column>
                             <table:Column
                                 id="_IDGenColumn20"
-                                width="14rem"
+                                width="4rem"
                             >
                                 <m:Label
                                     id="_IDGenLabel32"
@@ -217,7 +256,7 @@
                             </table:Column>
                             <table:Column
                                 id="_IDGenColumn21"
-                                width="14rem"
+                                width="6rem"
                             >
                                 <m:Label
                                     id="_IDGenLabel33"
@@ -227,12 +266,13 @@
                                     <m:Input
                                         id="_IDGenText16"
                                         value="{Header>Location}"
+                                        submit="onRowEnter"
                                     />
                                 </table:template>
                             </table:Column>
                             <table:Column
                                 id="_IDGenColumn22"
-                                width="14rem"
+                                width="8rem"
                             >
                                 <m:Label
                                     id="_IDGenLabel34"
@@ -242,13 +282,14 @@
                                     <m:Input
                                         id="_IDGenInput11"
                                         value="{Header>Batch}"
+                                        submit="onRowEnter"
                                     />
                                 </table:template>
                             </table:Column>
 
                             <table:Column
                                 id="_IDGenColumn16"
-                                width="15rem"
+                                width="6rem"
                             >
                                 <m:Label
                                     id="_IDGenLabel28"
@@ -260,12 +301,13 @@
                                         value="{Header>Quantity}"
                                         change="qtyChange"
                                         type="Number"
+                                        submit="onRowEnter"
                                     />
                                 </table:template>
                             </table:Column>
                             <table:Column
                                 id="_IDGenColumn17"
-                                width="10rem"
+                                width="4rem"
                             >
                                 <m:Label
                                     id="_IDGenLabel29"
@@ -279,6 +321,36 @@
                                 </table:template>
                             </table:Column>
                             <table:Column
+                                id="_IDGenColumn171"
+                                width="8rem"
+                            >
+                                <m:Label
+                                    id="_IDGenLabel291"
+                                    text="Converted Quantity"
+                                />
+                                <table:template>
+                                    <m:Text
+                                        id="_IDGenText121"
+                                        text="{Header>ConvertedQuantity}"
+                                    />
+                                </table:template>
+                            </table:Column>
+                             <table:Column
+                                id="_IDGenColumn811"
+                                width="10rem"
+                            >
+                                <m:Label
+                                    id="_IDGenLabel1511"
+                                    text="Converted Unit"
+                                />
+                                <table:template>
+                                    <m:Text
+                                        id="_IDGenInput511"
+                                        text="{Header>AlternativeUnit}"
+                                    />
+                                </table:template>
+                            </table:Column>
+                            <!-- <table:Column
                                 id="_IDGenColumn18"
                                 width="15rem"
                             >
@@ -292,7 +364,7 @@
                                         text="{Header>MoveType}"
                                     />
                                 </table:template>
-                            </table:Column>
+                            </table:Column> -->
                         </table:columns>
                     </table:Table>
                 </m:content>

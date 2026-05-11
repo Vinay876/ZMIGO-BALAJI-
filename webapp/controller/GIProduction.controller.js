@@ -25,34 +25,34 @@ sap.ui.define([
         onInit: function () {
             this._rebindHeader();
             var oRouter = this.getOwnerComponent().getRouter();
-            oRouter.getRoute("RouteGIProduction") 
-           .attachMatched(this._onRouteMatched, this);
+            oRouter.getRoute("RouteGIProduction")
+                .attachMatched(this._onRouteMatched, this);
         },
 
-_onRouteMatched: function () {
-    this._selectedChars = {};
-    if (this._oOrderDialog) {
-        this._oOrderDialog.destroy();
-        this._oOrderDialog = null;
-    }
-    if (this._oBatchDialog) {
-        this._oBatchDialog.destroy();
-        this._oBatchDialog = null;
-    }
-    this.getView().byId("materialPanel").setExpanded(false);
-    this.getView().byId("itemPanel").setExpanded(true);
-    this.getView().byId("inOrder").setValueState("None");
-    this.getView().byId("_IDGenTable").clearSelection();
-    this.getView().byId("TreeTableBasic").clearSelection();
-    this.getView().byId("BatchClassificationTable").clearSelection();
-    this._rebindHeader();
-},
+        _onRouteMatched: function () {
+            this._selectedChars = {};
+            if (this._oOrderDialog) {
+                this._oOrderDialog.destroy();
+                this._oOrderDialog = null;
+            }
+            if (this._oBatchDialog) {
+                this._oBatchDialog.destroy();
+                this._oBatchDialog = null;
+            }
+            this.getView().byId("materialPanel").setExpanded(false);
+            this.getView().byId("itemPanel").setExpanded(true);
+            this.getView().byId("inOrder").setValueState("None");
+            this.getView().byId("_IDGenTable").clearSelection();
+            this.getView().byId("TreeTableBasic").clearSelection();
+            this.getView().byId("BatchClassificationTable").clearSelection();
+            this._rebindHeader();
+        },
         onOrderChange: function (oEvent) {
+            this._rebindHeader();
             var sValue = oEvent.getParameter("value");
             var that = this;
 
             if (!sValue) {
-                this._rebindHeader();
                 return;
             }
 
@@ -61,6 +61,7 @@ _onRouteMatched: function () {
                 success: function (oData) {
                     oView.setBusy(false);
                     if (oData) {
+                        that.oViewModel.setProperty("/ManufacturingOrderPlant", oData.Plant);
                         that._fillHeaderFields(oData.ManufacturingOrder, oData.OrderType);
                     }
                 },
@@ -83,6 +84,7 @@ _onRouteMatched: function () {
 
             this.oViewModel.setProperty("/ManufacturingOrder", sOrder);
             this.oViewModel.setProperty("/OrderType", sType);
+            this.oViewModel.setProperty("/orderSelected", true);
             this.oViewModel.setProperty("/DocumentDate", sFormattedDate);
             this.oViewModel.setProperty("/PostingDate", sFormattedDate);
             this.oViewModel.setProperty("/MoveType", "261");
@@ -108,7 +110,12 @@ _onRouteMatched: function () {
                             Batch: item.Batch,
                             Plant: item.Plant,
                             ManufacturingOrder: item.ProductionOrder,
-                            BatchEditable: item.GoodsMovementType !== "531"
+                            BatchEditable: item.GoodsMovementType !== "531",
+                            AutoEdit: true,
+                            QuantityNumerator: item.QuantityNumerator,
+                            QuantityDenominator: item.QuantityDenominator,
+                            AlternativeUnit: item.AlternativeUnit,
+                            QtyConv: item.AlternativeUnit ? (Number(item.RequiredQuantity) / ((Number(item.QuantityNumerator) || 1) / (Number(item.QuantityDenominator) || 1))).toFixed(3) : ""
                         };
                     });
                     that.oViewModel.setProperty("/ProdItems", aHeaderTableItems)
@@ -120,7 +127,6 @@ _onRouteMatched: function () {
                 }
             });
         },
-
         _rebindHeader: function () {
             var oData = {
                 DocumentDate: null,
@@ -129,6 +135,7 @@ _onRouteMatched: function () {
                 ManufacturingOrder: "",
                 RefernceDocument: "",
                 fieldsEnabled: true,
+                orderSelected: false,
                 MoveType: "",
                 ProdItems: [],
                 ProdDividedItem: [],
@@ -153,9 +160,9 @@ _onRouteMatched: function () {
                     ok: function (oEvent) {
                         var aTokens = oEvent.getParameter("tokens");
                         if (aTokens.length > 0) {
-                            var sSelectedPO = aTokens[0].getKey();
-                            var sSelectedType = aTokens[0].getText();
-                            that._fillHeaderFields(sSelectedPO, sSelectedType);
+                            let data = oEvent.getSource().getTable().getContextByIndex(oEvent.getSource().getTable().getSelectedIndex()).getObject()
+                            that._fillHeaderFields(data.ManufacturingOrder, data.OrderType);
+                            that.oViewModel.setProperty("/ManufacturingOrderPlant", data.Plant);
                         }
                         this.close();
                     },
@@ -237,14 +244,234 @@ _onRouteMatched: function () {
                 }
             });
         },
+        onProductValueHelp: function (oEvent) {
+            this.SelectedSPath = oEvent.getSource().getParent().getBindingContext("Header").getPath();
+            var oView = this.getView();
+            var that = this;
+            var oModel = this.getOwnerComponent().getModel();
+
+            if (!this.productDialog) {
+                this.productDialog = new sap.ui.comp.valuehelpdialog.ValueHelpDialog({
+                    title: "Product",
+                    supportMultiselect: false,
+                    key: "Product",
+                    descriptionKey: "ProductDescription",
+                    ok: function (oEvent) {
+                        var aTokens = oEvent.getParameter("tokens");
+                        if (aTokens.length > 0) {
+                            let data = oEvent.getSource().getTable().getContextByIndex(oEvent.getSource().getTable().getSelectedIndex()).getObject()
+                            that.oViewModel.setProperty(that.SelectedSPath, {
+                                Material: data.Product,
+                                ProductName: data.ProductDescription,
+                                Unit: data.BaseUnit,
+                                Plant: that.oViewModel.getProperty("/ManufacturingOrderPlant"),
+                                BatchEditable: true,
+                                MoveType: "261",
+                                ManufacturingOrder: that.oViewModel.getProperty("/ManufacturingOrder"),
+                                AutoEdit: false,
+                                QuantityNumerator: data.QuantityNumerator,
+                                QuantityDenominator: data.QuantityDenominator,
+                                AlternativeUnit: data.AlternativeUnit,
+                            })
+                        }
+                        this.close();
+                        that.SelectedSPath = null;
+                    },
+                    cancel: function () {
+                        that.SelectedSPath = null;
+                        this.close();
+                    }
+                });
+
+                var oFilterBar = new sap.ui.comp.filterbar.FilterBar({
+                    advancedMode: true,
+                    filterGroupItems: [
+                        new sap.ui.comp.filterbar.FilterGroupItem({
+                            groupName: "G1",
+                            name: "Product",
+                            label: "Product",
+                            control: new sap.m.Input()
+                        }),
+                        new sap.ui.comp.filterbar.FilterGroupItem({
+                            groupName: "G1",
+                            name: "Descripton",
+                            label: "ProductDescripton",
+                            control: new sap.m.Input()
+                        })
+                    ],
+                    search: function (oEvt) {
+                        var aSelectionSet = oEvt.getParameter("selectionSet");
+                        var sOrder = aSelectionSet[0].getValue().toLowerCase();
+                        var sType = aSelectionSet[1].getValue().toLowerCase();
+
+                        var oTable = that.productDialog.getTable();
+                        oTable.setSelectionMode("Single");
+                        var oBinding = oTable.getBinding("rows");
+
+                        var aFilters = [];
+                        if (sOrder) {
+                            aFilters.push(new sap.ui.model.Filter("Product", sap.ui.model.FilterOperator.Contains, sOrder));
+                        }
+                        if (sType) {
+                            aFilters.push(new sap.ui.model.Filter("ProductDescription", sap.ui.model.FilterOperator.Contains, sType));
+                        }
+
+                        oBinding.filter(aFilters);
+                    }
+                });
+
+                this.productDialog.setFilterBar(oFilterBar);
+
+                var oTable = this.productDialog.getTable();
+                var oColModel = new JSONModel({
+                    cols: [
+                        { label: "Product", template: "Product" },
+                        { label: "Description", template: "ProductDescription" },
+                        { label: "Type", template: "ProductType" },
+                        { label: "Unit", template: "BaseUnit" },
+                    ]
+                });
+                oTable.setModel(oColModel, "columns");
+            }
+
+
+            this.productDialog.open();
+            this.productDialog.getTable().setBusy(true);
+
+            oModel.read("/ProductVH", {
+                success: function (oData) {
+                    var oLocalModel = new JSONModel({
+                        results: oData.results
+                    });
+
+                    var oTable = that.productDialog.getTable();
+                    oTable.setModel(oLocalModel);
+                    oTable.bindRows("/results");
+
+                    that.productDialog.update();
+                    that.productDialog.setTitle(
+                        "Products (" + oData.results.length + ")"
+                    );
+
+                    oTable.setBusy(false);
+                },
+                error: function () {
+                    that.productDialog.getTable().setBusy(false);
+                }
+            });
+        },
+        onLocationValueHelp: function (oEvent) {
+            this.SelectedSPath = oEvent.getSource().getParent().getBindingContext("Header").getPath();
+            var oView = this.getView();
+            var that = this;
+            var oModel = this.getOwnerComponent().getModel();
+
+            if (!this.locationDialog) {
+                this.locationDialog = new sap.ui.comp.valuehelpdialog.ValueHelpDialog({
+                    title: "Location",
+                    supportMultiselect: false,
+                    key: "StorageLocation",
+                    descriptionKey: "StorageLocationName",
+                    ok: function (oEvent) {
+                        var aTokens = oEvent.getParameter("tokens");
+                        if (aTokens.length > 0) {
+                            let data = oEvent.getSource().getTable().getContextByIndex(oEvent.getSource().getTable().getSelectedIndex()).getObject()
+                            that.oViewModel.setProperty(that.SelectedSPath + "/Location", data.StorageLocation)
+                        }
+                        this.close();
+                        that.SelectedSPath = null;
+                    },
+                    cancel: function () {
+                        that.SelectedSPath = null;
+                        this.close();
+                    }
+                });
+
+                var oFilterBar = new sap.ui.comp.filterbar.FilterBar({
+                    advancedMode: true,
+                    filterGroupItems: [
+                        new sap.ui.comp.filterbar.FilterGroupItem({
+                            groupName: "G1",
+                            name: "StorageLocation",
+                            label: "Location",
+                            control: new sap.m.Input()
+                        }),
+                        new sap.ui.comp.filterbar.FilterGroupItem({
+                            groupName: "G1",
+                            name: "StorageLocationName",
+                            label: "Name",
+                            control: new sap.m.Input()
+                        })
+                    ],
+                    search: function (oEvt) {
+                        var aSelectionSet = oEvt.getParameter("selectionSet");
+                        var sOrder = aSelectionSet[0].getValue().toLowerCase();
+                        var sType = aSelectionSet[1].getValue().toLowerCase();
+
+                        var oTable = that.locationDialog.getTable();
+                        oTable.setSelectionMode("Single");
+                        var oBinding = oTable.getBinding("rows");
+
+                        var aFilters = [];
+                        if (sOrder) {
+                            aFilters.push(new sap.ui.model.Filter("StorageLocation", sap.ui.model.FilterOperator.Contains, sOrder));
+                        }
+                        if (sType) {
+                            aFilters.push(new sap.ui.model.Filter("StorageLocationName", sap.ui.model.FilterOperator.Contains, sType));
+                        }
+                        aFilters.push(new sap.ui.model.Filter("Plant", sap.ui.model.FilterOperator.EQ, that.oViewModel.getProperty("/ManufacturingOrderPlant")));
+                        oBinding.filter(aFilters);
+                    }
+                });
+
+                this.locationDialog.setFilterBar(oFilterBar);
+
+                var oTable = this.locationDialog.getTable();
+                var oColModel = new JSONModel({
+                    cols: [
+                        { label: "Location", template: "StorageLocation" },
+                        { label: "Name", template: "StorageLocationName" },
+                    ]
+                });
+                oTable.setModel(oColModel, "columns");
+            }
+
+
+            this.locationDialog.open();
+            this.locationDialog.getTable().setBusy(true);
+
+            oModel.read("/StorageLocationVH", {
+                filters: [new sap.ui.model.Filter("Plant", sap.ui.model.FilterOperator.EQ, that.oViewModel.getProperty("/ManufacturingOrderPlant"))],
+                success: function (oData) {
+                    var oLocalModel = new JSONModel({
+                        results: oData.results
+                    });
+
+                    var oTable = that.locationDialog.getTable();
+                    oTable.setModel(oLocalModel);
+                    oTable.bindRows("/results");
+
+                    that.locationDialog.update();
+                    that.locationDialog.setTitle(
+                        "Storage Location (" + oData.results.length + ")"
+                    );
+
+                    oTable.setBusy(false);
+                },
+                error: function () {
+                    that.locationDialog.getTable().setBusy(false);
+                }
+            });
+        },
 
         onBatchValueHelp: function (oEvent) {
+            this.SelectedSPath = oEvent.getSource().getParent().getBindingContext("Header").getPath();
             var that = this;
             var oModel = this.getOwnerComponent().getModel();
 
             var oSource = oEvent.getSource();
             this._sTrackingPath = oSource.getBindingContext("Header").getPath();
-            var oRowData = oSource.getBindingContext("Header").getObject();
+            var oRowData = this.oViewModel.getProperty(this.SelectedSPath);
 
             var sCurrentMaterial = oRowData.Material;
             var sCurrentLocation = oRowData.Location;
@@ -271,30 +498,32 @@ _onRouteMatched: function () {
                     key: "Batch",
                     descriptionKey: "Batch",
                     ok: function (oEvt) {
+                        var oCurrentRowData = that.oViewModel.getProperty(that.SelectedSPath);
 
-                        ;
-                        var aTokens = oEvt.getParameter("tokens");
                         var aCurrentItems = that.oViewModel.getProperty("/ProdDividedItem") || [];
-                        if (aTokens.length > 0) {
-                            aTokens.forEach(function (oToken) {
-                                aCurrentItems.push({
-                                    Material: oRowData.Material,
-                                    ProductName: oRowData.ProductName,
-                                    Batch: oToken.getKey(),
-                                    Location: oRowData.Location,
-                                    Movementtype: oRowData.MoveType || oRowData.Movementtype,
-                                    Quantity: "0.000",
-                                    Unit: oRowData.Unit || "KG",
-                                    Plant: oRowData.Plant,
-                                    ManufacturingOrder: oRowData.ManufacturingOrder,
-                                    BatchEditable: true
-                                });
+                        let selectedItems = oEvt.getSource().getTable().getSelectedIndices();
+                        for (let index = 0; index < selectedItems.length; index++) {
+                            let selectedData = oEvt.getSource().getTable().getContextByIndex(selectedItems[index]).getObject();
+                            aCurrentItems.push({
+                                Material: oCurrentRowData.Material,
+                                ProductName: oCurrentRowData.ProductName,
+                                Batch: selectedData.Batch,
+                                Location: oCurrentRowData.Location,
+                                Movementtype: oCurrentRowData.MoveType || oCurrentRowData.Movementtype,
+                                Quantity: selectedData.MatlStkIncrQtyInMatlBaseUnit,
+                                BatchQuantity: selectedData.MatlStkIncrQtyInMatlBaseUnit,
+                                Unit: oCurrentRowData.Unit || "KG",
+                                Plant: oCurrentRowData.Plant,
+                                ManufacturingOrder: oCurrentRowData.ManufacturingOrder,
+                                BatchEditable: true
                             });
-                            that.oViewModel.setProperty("/ProdDividedItem", aCurrentItems);
-                        }
+                        };
+                        that.oViewModel.setProperty("/ProdDividedItem", aCurrentItems);
+                        that.SelectedSPath = null;
                         this.close();
                     },
                     cancel: function () {
+                        that.SelectedSPath = null;
                         this.close();
                     }
                 });
@@ -317,6 +546,7 @@ _onRouteMatched: function () {
                     cols: [
                         { label: "Batch", template: "Batch" },
                         { label: "Material", template: "Material" },
+                        { label: "Material Description", template: "ProductName" },
                         { label: "Storage Location", template: "StorageLocation" },
                         { label: "Net Stock", template: "NetStock" }
                     ]
@@ -425,10 +655,13 @@ _onRouteMatched: function () {
                         MessageBox.error(result.ErrorMessage);
                         that.getView().setBusy(false);
                     } else {
-                        MessageBox.success(`Document is posted Successfully with No - ${result.MaterialDocument} and Year - ${result.MaterialDocumentYear}`);
+                        MessageBox.success(`Document is posted Successfully with No - ${result.MaterialDocument} and Year - ${result.MaterialDocumentYear}`, {
+                            onClose: function () {
+                                that._resetForm();
+
+                            }
+                        });
                         that.getView().setBusy(false);
-                        that._resetForm();
-                        that._rebindHeader();
                     }
                 },
                 error: function (result) {
@@ -438,27 +671,30 @@ _onRouteMatched: function () {
             })
         },
         _resetForm: function () {
-    var oModel = this.getView().getModel("Header");
-    oModel.setData({
-        ManufacturingOrder  : "",
-        DocumentDate        : null,
-        PostingDate         : null,
-        HeaderText          : "",
-        RefernceDocument    : "",
-        MoveType            : "",       
-        fieldsEnabled       : false,
-        ProdItems           : [],
-        ProdDividedItem     : [],
-        BatchClassifications: []
-    });
-    this._selectedChars = {};
-    this.getView().byId("materialPanel").setExpanded(false);
-    this.getView().byId("itemPanel").setExpanded(true);
-    this.getView().byId("inOrder").setValueState("None");
-    this.getView().byId("_IDGenTable").clearSelection();
-    this.getView().byId("TreeTableBasic").clearSelection();
-    this.getView().byId("BatchClassificationTable").clearSelection();
-},
+            this._selectedChars = {};
+
+            if (this._oOrderDialog) {
+                this._oOrderDialog.destroy();
+                this._oOrderDialog = null;
+            }
+            if (this._oBatchDialog) {
+                this._oBatchDialog.destroy();
+                this._oBatchDialog = null;
+            }
+
+            this._rebindHeader();
+
+            this.getView().byId("materialPanel").setExpanded(false);
+            this.getView().byId("itemPanel").setExpanded(true);
+            this.getView().byId("inOrder").setValueState("None");
+            this.getView().byId("_IDGenTable").clearSelection();
+            this.getView().byId("TreeTableBasic").clearSelection();
+            this.getView().byId("BatchClassificationTable").clearSelection();
+
+            var oRouter = this.getOwnerComponent().getRouter();
+            oRouter.navTo("RouteView1", {}, true);
+        },
+
         onCancel: function () {
             this._selectedChars = {};
 
@@ -475,11 +711,72 @@ _onRouteMatched: function () {
                 oModel.setProperty("/BatchClassifications", []);
             }
 
-               this._selectedChars = {};
-                var oRouter = this.getOwnerComponent().getRouter();
-                oRouter.navTo("RouteView1", {}, true);
-            
+            this._selectedChars = {};
+            var oRouter = this.getOwnerComponent().getRouter();
+            oRouter.navTo("RouteView1", {}, true);
+
         },
 
+        onAddMaterialLine: function () {
+            var aProdItems = this.oViewModel.getProperty("/ProdItems") || [];
+            if (!this.oViewModel.getProperty("/ManufacturingOrder")) {
+                MessageBox.error("Select Production Order");
+                return;
+            }
+
+            var oNewLine = {
+                Material: "",
+                ProductName: "",
+                Quantity: "",
+                Unit: "",
+                MoveType: "261",
+                QtyConv: "",
+                Plant: this.oViewModel.getProperty("/ManufacturingOrderPlant"),
+                Location: "",
+                Batch: "",
+                BatchEditable: true,
+                ManufacturingOrder: this.oViewModel.getProperty("/ManufacturingOrder")
+
+            };
+
+            aProdItems.push(oNewLine);
+            this.oViewModel.setProperty("/ProdItems", aProdItems);
+        },
+
+        onDeleteMaterialLine: function () {
+            var oTable = this.byId("_IDGenTable");
+            var aSelectedIndices = oTable.getSelectedIndices();
+
+            if (aSelectedIndices.length === 0) {
+                sap.m.MessageToast.show("Please select a row to delete.");
+                return;
+            }
+
+            var aProdItems = this.oViewModel.getProperty("/ProdItems") || [];
+
+            aSelectedIndices.reverse().forEach(function (iIndex) {
+                aProdItems.splice(iIndex, 1);
+            });
+
+            this.oViewModel.setProperty("/ProdItems", aProdItems);
+            oTable.clearSelection();
+        },
+        onQuantityChange: function (oEvent) {
+            var oSource = oEvent.getSource();
+            var oContext = oSource.getParent().getBindingContext("Header");
+            var sPath = oContext.getPath();
+            var oRow = this.oViewModel.getProperty(sPath);
+            debugger
+            var fQty = parseFloat(oEvent.getParameter("value")) || 0;
+
+            if (oRow.AlternativeUnit) {
+                var fNumerator = parseFloat(oRow.QuantityNumerator) || 1;
+                var fDenominator = parseFloat(oRow.QuantityDenominator) || 1;
+                var fConv = (fQty / (fNumerator / fDenominator)).toFixed(3);
+                this.oViewModel.setProperty(sPath + "/QtyConv", fConv);
+            } else {
+                this.oViewModel.setProperty(sPath + "/QtyConv", "0.000");
+            }
+        },
     });
 });

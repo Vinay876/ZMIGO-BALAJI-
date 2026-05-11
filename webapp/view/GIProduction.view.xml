@@ -49,6 +49,7 @@
                                 width="100%"
                                 value="{Header>/ManufacturingOrder}"
                                 showValueHelp="true"
+                                editable="{= !${Header>/orderSelected}}"
                                 required="true"
                                 valueHelpRequest=".onPOValueHelp"
                             />
@@ -136,7 +137,7 @@
             <m:Panel
                 width="auto"
                 id="materialPanel"
-                headerText="Material Details"
+                headerText="{= 'Material Details (' + ${Header>/ProdItems}.length + ')'}"
                 expandable="true"
                 expanded="false"
                 class="sapUiResponsiveMargin"
@@ -147,6 +148,26 @@
                         rows="{Header>/ProdItems}"
                         selectionMode="MultiToggle"
                     >
+                        <table:extension>
+                            <m:OverflowToolbar id="_IDGenOverflowToolbar3">
+                                <m:ToolbarSpacer id="_IDGenToolbarSpacer3" />
+                                <m:Button
+                                    id="_IDGenButtonAdd"
+                                    text="Add Line"
+                                    icon="sap-icon://add"
+                                    type="Emphasized"
+                                    press="onAddMaterialLine"
+                                />
+                                <m:Button
+                                    id="_IDGenButtonDelMat"
+                                    text="Delete"
+                                    icon="sap-icon://delete"
+                                    type="Reject"
+                                    press="onDeleteMaterialLine"
+                                />
+                            </m:OverflowToolbar>
+                        </table:extension>
+
                         <table:rowMode>
                             <rowmodes:Fixed
                                 id="_IDGenFixed"
@@ -163,9 +184,13 @@
                                     text="Material"
                                 />
                                 <table:template>
-                                    <m:Text
+                                    <m:Input
                                         id="_IDGenText"
-                                        text="{Header>Material}"
+                                        editable="{= !${Header>AutoEdit}}"
+                                        value="{Header>Material}"
+                                        required="true"
+                                        valueHelpRequest=".onProductValueHelp"
+                                        showValueHelp="true"
                                     />
                                 </table:template>
                             </table:Column>
@@ -193,9 +218,12 @@
                                     text="Quantity"
                                 />
                                 <table:template>
-                                    <m:Text
+                                    <m:Input
                                         id="_IDGenText1"
-                                        text="{Header>Quantity}"
+                                        editable="true"
+                                        type="Number"
+                                        value="{Header>Quantity}"
+                                       liveChange=".onQuantityChange"
                                     />
                                 </table:template>
                             </table:Column>
@@ -235,12 +263,28 @@
                             >
                                 <m:Label
                                     id="_IDGenLabel15"
-                                    text="Quantity Conversion"
+                                    text="Converted Quantity"
                                 />
                                 <table:template>
                                     <m:Text
                                         id="_IDGenInput5"
                                         text="{Header>QtyConv}"
+                                        
+                                    />
+                                </table:template>
+                            </table:Column>
+                             <table:Column
+                                id="_IDGenColumn81"
+                                width="10rem"
+                            >
+                                <m:Label
+                                    id="_IDGenLabel151"
+                                    text="Converted Unit"
+                                />
+                                <table:template>
+                                    <m:Text
+                                        id="_IDGenInput51"
+                                        text="{Header>AlternativeUnit}"
                                     />
                                 </table:template>
                             </table:Column>
@@ -268,9 +312,13 @@
                                     text="Storage Location"
                                 />
                                 <table:template>
-                                    <m:Text
+                                    <m:Input
                                         id="_IDGenText9"
-                                        text="{Header>Location}"
+                                        editable="{= !${Header>AutoEdit}}"
+                                        value="{Header>Location}"
+                                        required="true"
+                                        valueHelpRequest=".onLocationValueHelp"
+                                        showValueHelp="true"
                                     />
                                 </table:template>
                             </table:Column>
@@ -301,7 +349,7 @@
             <m:Panel
                 width="auto"
                 id="itemPanel"
-                headerText="Batch Distribution Details"
+                headerText="{= 'Batch Distribution Details (' + ${Header>/ProdDividedItem}.length + ')'}"
                 expandable="true"
                 expanded="true"
                 class="sapUiResponsiveMargin"
@@ -396,6 +444,21 @@
                                 </table:template>
                             </table:Column>
                             <table:Column
+                                id="_IDGenColumn28"
+                                width="10rem"
+                            >
+                                <m:Label
+                                    id="_IDGenLabel30"
+                                    text="Batch Quantity"
+                                />
+                                <table:template>
+                                    <m:Text
+                                        id="_IDGenInput12"
+                                        text="{Header>BatchQuantity}"
+                                    />
+                                </table:template>
+                            </table:Column>
+                            <table:Column
                                 id="_IDGenColumn25"
                                 width="10rem"
                             >
@@ -419,7 +482,7 @@
             <m:Panel
                 width="auto"
                 id="_IDGenPanel"
-                headerText="Batch Classification Details"
+                headerText="{= 'Batch Classification Details (' + ${Header>/BatchClassifications}.length + ')'}"
                 expandable="true"
                 expanded="true"
                 class="sapUiResponsiveMargin"
