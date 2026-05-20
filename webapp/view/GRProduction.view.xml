@@ -97,12 +97,28 @@
                                 text="Movement Type"
                                 design="Bold"
                             />
-                            <m:Input
+                            <!-- <m:Input
                                 id="_IDGenInput4"
                                 width="120px"
                                 value="{Header>/MoveType}"
                                 editable="false"
-                            />
+                            /> -->
+                            <m:HBox id="_IDGenHBox1"
+                                alignItems="Center"
+                                renderType="Bare"
+                            >
+                                <m:Input
+                                id="_IDGenInput4"
+                                width="120px"
+                                value="{Header>/MoveType}"
+                                editable="false"
+                            /> 
+                                <m:Text
+                                    id="_IDGenTextProdDesc1"
+                                    text="{Header>/ProductDescription}"
+                                    class="sapUiSmallMarginBegin"
+                                />
+                            </m:HBox>
                             <m:Label
                                 id="_IDGenLabel261"
                                 text="Department"
@@ -124,7 +140,7 @@
 
                             <m:Label
                                 id="_IDGenLabel26"
-                                text="Shift"
+                                text="Shift/Operator"
                             />
                             <m:Input
                                 id="_IDGenInput10"
@@ -282,6 +298,7 @@
                                     <m:Input
                                         id="_IDGenInput11"
                                         value="{Header>Batch}"
+                                        editable="false"
                                         submit="onRowEnter"
                                     />
                                 </table:template>
@@ -396,3 +413,15 @@
         </m:footer>
     </m:Page>
 </mvc:View>
+
+
+
+
+
+
+
+
+
+
+
+

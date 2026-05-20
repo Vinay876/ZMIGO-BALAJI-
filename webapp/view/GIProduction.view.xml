@@ -96,16 +96,43 @@
                                 text="Movement Type"
                                 design="Bold"
                             />
-                            <m:Input
+                            <!-- <m:Input
                                 id="inMovType"
                                 width="120px"
                                 value="{Header>/MoveType}"
+                                editable="false"
+                            /> -->
+                            <m:HBox id="_IDGenHBox"
+                                alignItems="Center"
+                                renderType="Bare"
+                            >
+                                <m:Input
+                                    id="inMovType"
+                                    width="120px"
+                                    value="{Header>/MoveType}"
+                                    editable="false"
+                                />
+                                <m:Text
+                                    id="_IDGenTextProdDesc"
+                                    text="{Header>/ProductDescription}"
+                                    class="sapUiSmallMarginBegin"
+                                />
+                            </m:HBox>
+
+                            <!--  -->
+                            <m:Label
+                                id="_IDGenLabel2611"
+                                text="Department"
+                            />
+                            <m:Input
+                                id="_IDGenInput1011"
+                                value="{Header>/WorkCenter}"
                                 editable="false"
                             />
 
                             <m:Label
                                 id="_IDGenLabel12"
-                                text="Doc. Header Text"
+                                text="Machine Number"
                             />
                             <m:Input
                                 id="_IDGenInput2"
@@ -114,7 +141,7 @@
 
                             <m:Label
                                 id="_IDGenLabel13"
-                                text="Delivery Note"
+                                text="Shift/Operator"
                             />
                             <m:Input
                                 id="_IDGenInput3"
@@ -223,7 +250,7 @@
                                         editable="true"
                                         type="Number"
                                         value="{Header>Quantity}"
-                                       liveChange=".onQuantityChange"
+                                        liveChange=".onQuantityChange"
                                     />
                                 </table:template>
                             </table:Column>
@@ -269,11 +296,10 @@
                                     <m:Text
                                         id="_IDGenInput5"
                                         text="{Header>QtyConv}"
-                                        
                                     />
                                 </table:template>
                             </table:Column>
-                             <table:Column
+                            <table:Column
                                 id="_IDGenColumn81"
                                 width="10rem"
                             >
@@ -349,7 +375,7 @@
             <m:Panel
                 width="auto"
                 id="itemPanel"
-                headerText="{= 'Batch Distribution Details (' + ${Header>/ProdDividedItem}.length + ')'}"
+                headerText="{= 'Batch Distribution Details (' + ${Header>/ProdDividedItemCount} + ')'}"
                 expandable="true"
                 expanded="true"
                 class="sapUiResponsiveMargin"
@@ -361,6 +387,19 @@
                         selectionMode="Single"
                         rowSelectionChange="OnDistriButionChange"
                     >
+                        <table:extension>
+                            <m:OverflowToolbar id="_IDGenOverflowToolbar31">
+                                <m:ToolbarSpacer id="_IDGenToolbarSpacer31" />
+                                <m:Button
+                                    id="_IDGenButtonDelBatch1"
+                                    text="Delete"
+                                    icon="sap-icon://delete"
+                                    type="Reject"
+                                    press="onDeleteBatchLine"
+                                />
+                            </m:OverflowToolbar>
+                        </table:extension>
+
                         <table:rowMode>
                             <rowmodes:Fixed
                                 id="_IDGenFixed1"

@@ -9,6 +9,8 @@
 [id$="--GIProduction--_IDGenTitle1"],
 [id$="--GRProduction--_IDGenTitle3"],
 [id$="--GRProduction--_IDGenTitle4"],
-[id$="--GIProduction--_IDGenTitle2"]{
+[id$="--GIProduction--_IDGenTitle2"],
+[id$="--GRPurchase--_IDGenTitle5"],
+[id$="--GRPurchase--_IDGenTitle6"]{
     display: none!important;
 }

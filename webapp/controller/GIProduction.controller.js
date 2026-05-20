@@ -98,7 +98,6 @@ sap.ui.define([
                 success: function (oData) {
                     oView.setBusy(false);
 
-
                     var aHeaderTableItems = oData.results.map(function (item) {
                         return {
                             Material: item.Material,
@@ -137,9 +136,11 @@ sap.ui.define([
                 fieldsEnabled: true,
                 orderSelected: false,
                 MoveType: "",
+                ProductDescription: "",
                 ProdItems: [],
                 ProdDividedItem: [],
-                BatchClassifications: []
+                BatchClassifications: [],
+                ProdDividedItemCount: 0
             };
 
             this.oViewModel = new JSONModel(oData);
@@ -161,6 +162,10 @@ sap.ui.define([
                         var aTokens = oEvent.getParameter("tokens");
                         if (aTokens.length > 0) {
                             let data = oEvent.getSource().getTable().getContextByIndex(oEvent.getSource().getTable().getSelectedIndex()).getObject()
+                            if (data.WorkCenter) {
+                                that.oViewModel.setProperty("/WorkCenter", data.WorkCenter);
+                            }
+                            that.oViewModel.setProperty("/ProductDescription", data.ProductName);
                             that._fillHeaderFields(data.ManufacturingOrder, data.OrderType);
                             that.oViewModel.setProperty("/ManufacturingOrderPlant", data.Plant);
                         }
@@ -183,12 +188,27 @@ sap.ui.define([
                             name: "OrderType",
                             label: "Production Order Type",
                             control: new sap.m.Input()
+                        }),
+                        new sap.ui.comp.filterbar.FilterGroupItem({
+                            groupName: "G1",
+                            name: "Material",
+                            label: "Product",
+                            control: new sap.m.Input()
+                        }),
+                        new sap.ui.comp.filterbar.FilterGroupItem({
+                            groupName: "G1",
+                            name: "ProductName",
+                            label: "Product Description",
+                            control: new sap.m.Input()
                         })
                     ],
                     search: function (oEvt) {
                         var aSelectionSet = oEvt.getParameter("selectionSet");
                         var sOrder = aSelectionSet[0].getValue().toLowerCase();
                         var sType = aSelectionSet[1].getValue().toLowerCase();
+                        var sMaterial = aSelectionSet[2].getValue().toLowerCase();
+                        var sMaterialName = aSelectionSet[3].getValue().toLowerCase();
+
 
                         var oTable = that._oOrderDialog.getTable();
                         oTable.setSelectionMode("Single");
@@ -201,6 +221,12 @@ sap.ui.define([
                         if (sType) {
                             aFilters.push(new sap.ui.model.Filter("OrderType", sap.ui.model.FilterOperator.Contains, sType));
                         }
+                        if (sMaterial) {
+                            aFilters.push(new sap.ui.model.Filter("Material", sap.ui.model.FilterOperator.Contains, sMaterial));
+                        }
+                        if (sMaterialName) {
+                            aFilters.push(new sap.ui.model.Filter("ProductName", sap.ui.model.FilterOperator.Contains, sMaterialName));
+                        }
 
                         oBinding.filter(aFilters);
                     }
@@ -212,10 +238,28 @@ sap.ui.define([
                 var oColModel = new JSONModel({
                     cols: [
                         { label: "Production Order", template: "ManufacturingOrder" },
-                        { label: "Production Order Type", template: "OrderType" }
+                        { label: "Production Order Type", template: "OrderType" },
+                        { label: "Product", template: "Material" },
+                        { label: "Product Description", template: "ProductName" },
                     ]
                 });
                 oTable.setModel(oColModel, "columns");
+                var oDateColumn = new sap.ui.table.Column({
+                    label: new sap.m.Label({ text: "Production Order Date" }),
+                    template: new sap.m.Text({
+                        text: {
+                            path: "PoDate",
+                            formatter: function (sValue) {
+                                if (!sValue) return "";
+                                var oDate = new Date(sValue);
+                                var oFormatter = DateFormat.getDateInstance({ pattern: "dd-MM-yyyy" });
+                                return oFormatter.format(oDate);
+                            }
+                        }
+                    }),
+                    width: "14rem"
+                });
+                oTable.addColumn(oDateColumn)
             }
 
 
@@ -519,6 +563,7 @@ sap.ui.define([
                             });
                         };
                         that.oViewModel.setProperty("/ProdDividedItem", aCurrentItems);
+                        that._updateProdDividedCount();
                         that.SelectedSPath = null;
                         this.close();
                     },
@@ -591,24 +636,33 @@ sap.ui.define([
         },
 
         OnDistriButionChange: function (oEvent) {
-            let selectRow = oEvent.getParameter("rowContext").getObject();
+            var oRowContext = oEvent.getParameter("rowContext");
+            if (!oRowContext) {
+                return;
+            }
+
+            let selectRow = oRowContext.getObject();
+
+            if (!selectRow || !selectRow.Material || !selectRow.Batch) {
+                return;
+            }
+
             if (!this._selectedChars) {
                 this._selectedChars = {};
-                this._fetchMaterialBatchClassifications(selectRow.Material, selectRow.Batch)
-            }
-            else {
+                this._fetchMaterialBatchClassifications(selectRow.Material, selectRow.Batch);
+            } else {
                 let oldProperty = this.oViewModel.getProperty("/BatchClassifications/1");
-                if (oldProperty) this._selectedChars[`${oldProperty.Material}-${oldProperty.Batch}`] = this.oViewModel.getProperty("/BatchClassifications");
+                if (oldProperty) {
+                    this._selectedChars[`${oldProperty.Material}-${oldProperty.Batch}`] = this.oViewModel.getProperty("/BatchClassifications");
+                }
                 let details = this._selectedChars[`${selectRow.Material}-${selectRow.Batch}`];
                 if (!details) {
-                    this._fetchMaterialBatchClassifications(selectRow.Material, selectRow.Batch)
-                }
-                else {
-                    this.oViewModel.setProperty("/BatchClassifications", this._selectedChars[`${selectRow.Material}-${selectRow.Batch}`])
+                    this._fetchMaterialBatchClassifications(selectRow.Material, selectRow.Batch);
+                } else {
+                    this.oViewModel.setProperty("/BatchClassifications", this._selectedChars[`${selectRow.Material}-${selectRow.Batch}`]);
                 }
             }
         },
-
         _fetchMaterialBatchClassifications: function (Material, Batch) {
             var that = this;
             that.getView().setBusy(true);
@@ -639,12 +693,59 @@ sap.ui.define([
 
         onPost() {
             var that = this;
+            var aProdItems = this.oViewModel.getProperty("/ProdItems") || [];
+            var aProdDividedItem = this.oViewModel.getProperty("/ProdDividedItem") || [];
+
+            var aInvalidBatches = aProdDividedItem.filter(function (oBatchItem) {
+                return !aProdItems.some(function (oMatItem) {
+                    return oMatItem.Material === oBatchItem.Material;
+                });
+            });
+
+            if (aInvalidBatches.length > 0) {
+                var sErrorMsg = "Please delete the following batch lines before posting:\n\n";
+                aInvalidBatches.forEach(function (oItem) {
+                    sErrorMsg += "• Batch: " + oItem.Batch + " | Material: " + oItem.Material + " is not present in Material Details.\n";
+                });
+                MessageBox.error(sErrorMsg);
+                return;
+            }
+
+            var aRemainingBatches = this.oViewModel.getProperty("/ProdDividedItem") || [];
+
+            let diff531Items = this.oViewModel.getProperty("/ProdItems").filter((data) => {
+                if (data.MoveType !== "531") return false;
+
+                var bExistsInDistribution = aRemainingBatches.some(function (item) {
+                    return item.Material === data.Material && item.Movementtype === "531";
+                });
+
+                return !bExistsInDistribution;
+            }).map((data) => {
+                return {
+                    Material: data.Material,
+                    ProductName: data.ProductName,
+                    Batch: '',
+                    Location: data.Location,
+                    Movementtype: data.MoveType || data.Movementtype,
+                    Quantity: data.Quantity,
+                    Unit: data.Unit || "KG",
+                    Plant: data.Plant,
+                    ManufacturingOrder: data.ManufacturingOrder,
+                    BatchEditable: true
+                }
+            });
+
             that.getView().setBusy(true);
             $.ajax({
                 url: `/sap/bc/http/sap/ZHTTP_POST_GOODS_ISSUE`,
                 method: "POST",
                 data: JSON.stringify({
                     ...this.oViewModel.getProperty("/"),
+                    ProdDividedItem: [
+                        ...this.oViewModel.getProperty("/ProdDividedItem"),
+                        ...diff531Items
+                    ],
                     BatchClassifications: Object.values(this.oViewModel.getProperty("/BatchClassifications")).flat()
                 }),
                 headers: {
@@ -658,7 +759,6 @@ sap.ui.define([
                         MessageBox.success(`Document is posted Successfully with No - ${result.MaterialDocument} and Year - ${result.MaterialDocumentYear}`, {
                             onClose: function () {
                                 that._resetForm();
-
                             }
                         });
                         that.getView().setBusy(false);
@@ -669,6 +769,64 @@ sap.ui.define([
                     that.getView().setBusy(false);
                 }
             })
+        },
+
+        // onPost() {
+        //     var that = this;
+        //     let diff531Items = this.oViewModel.getProperty("/ProdItems").filter((data) => {
+        //         return data.MoveType === "531"
+        //     }).map((data) => {
+        //         return {
+        //             Material: data.Material,
+        //             ProductName: data.ProductName,
+        //             Batch: '',
+        //             Location: data.Location,
+        //             Movementtype: data.MoveType || data.Movementtype,
+        //             Quantity: data.Quantity,
+        //             Unit: data.Unit || "KG",
+        //             Plant: data.Plant,
+        //             ManufacturingOrder: data.ManufacturingOrder,
+        //             BatchEditable: true
+        //         }
+        //     });
+        //     that.getView().setBusy(true);
+        //     $.ajax({
+        //         url: `/sap/bc/http/sap/ZHTTP_POST_GOODS_ISSUE`,
+        //         method: "POST",
+        //         data: JSON.stringify({
+        //             ...this.oViewModel.getProperty("/"),
+        //             ProdDividedItem: [
+        //                 ...this.oViewModel.getProperty("/ProdDividedItem"),
+        //                 ...diff531Items
+        //             ],
+        //             BatchClassifications: Object.values(this.oViewModel.getProperty("/BatchClassifications")).flat()
+        //         }),
+        //         headers: {
+        //             "Content-Type": "application/json"
+        //         },
+        //         success: function (result) {
+        //             if (result.ErrorMessage) {
+        //                 MessageBox.error(result.ErrorMessage);
+        //                 that.getView().setBusy(false);
+        //             } else {
+        //                 MessageBox.success(`Document is posted Successfully with No - ${result.MaterialDocument} and Year - ${result.MaterialDocumentYear}`, {
+        //                     onClose: function () {
+        //                         that._resetForm();
+
+        //                     }
+        //                 });
+        //                 that.getView().setBusy(false);
+        //             }
+        //         },
+        //         error: function (result) {
+        //             console.log(result);
+        //             that.getView().setBusy(false);
+        //         }
+        //     })
+        // },
+        _updateProdDividedCount: function () {
+            var iCount = (this.oViewModel.getProperty("/ProdDividedItem") || []).length;
+            this.oViewModel.setProperty("/ProdDividedItemCount", iCount);
         },
         _resetForm: function () {
             this._selectedChars = {};
@@ -776,6 +934,46 @@ sap.ui.define([
                 this.oViewModel.setProperty(sPath + "/QtyConv", fConv);
             } else {
                 this.oViewModel.setProperty(sPath + "/QtyConv", "0.000");
+            }
+        },
+        onDeleteBatchLine: function () {
+            var oTable = this.byId("TreeTableBasic");
+            var aSelectedIndices = oTable.getSelectedIndices();
+
+            if (aSelectedIndices.length === 0) {
+                sap.m.MessageToast.show("Please select a batch row to delete.");
+                return;
+            }
+
+            var aProdDividedItem = this.oViewModel.getProperty("/ProdDividedItem") || [];
+
+            // Get the deleted row's key before removing it
+            var oDeletedRow = aProdDividedItem[aSelectedIndices[0]];
+
+            aSelectedIndices.slice().reverse().forEach(function (iIndex) {
+                aProdDividedItem.splice(iIndex, 1);
+            });
+
+            this.oViewModel.setProperty("/ProdDividedItem", aProdDividedItem);
+            oTable.clearSelection();
+            this._updateProdDividedCount();
+
+            // Clear BatchClassifications if they belong to the deleted row
+            if (oDeletedRow) {
+                var aClassifications = this.oViewModel.getProperty("/BatchClassifications") || [];
+                if (
+                    aClassifications.length > 0 &&
+                    aClassifications[0].Material === oDeletedRow.Material &&
+                    aClassifications[0].Batch === oDeletedRow.Batch
+                ) {
+                    this.oViewModel.setProperty("/BatchClassifications", []);
+                }
+
+                // Also remove from the cache
+                var sKey = oDeletedRow.Material + "-" + oDeletedRow.Batch;
+                if (this._selectedChars && this._selectedChars[sKey]) {
+                    delete this._selectedChars[sKey];
+                }
             }
         },
     });

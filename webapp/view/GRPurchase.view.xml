@@ -1,5 +1,303 @@
-<mvc:View controllerName="zmigo.controller."
+<mvc:View
+    controllerName="zmigo.controller.GRPurchase"
     displayBlock="true"
     xmlns:mvc="sap.ui.core.mvc"
-    xmlns="sap.m">
+    xmlns="sap.m"
+    xmlns:rowmodes="sap.ui.table.rowmodes"
+    xmlns:m="sap.m"
+    xmlns:f="sap.ui.layout.form"
+    xmlns:core="sap.ui.core"
+    xmlns:table="sap.ui.table"
+    height="100%"
+>
+    <m:Page
+        id="_IDGenPage11"
+        title="GOODS RECEIPT (PURCHASE ORDER)"
+        enableScrolling="true"
+    >
+        <m:content>
+            <m:Panel
+                id="_IDGenPanel4"
+                headerText="Header Details"
+                expandable="true"
+                expanded="true"
+                class="sapUiResponsiveMargin"
+                width="auto"
+            >
+                <m:content>
+                    <f:SimpleForm
+                        id="_IDGenSimpleForm2"
+                        editable="true"
+                        layout="ResponsiveGridLayout"
+                        singleContainerFullSize="false"
+                        adjustLabelSpan="false"
+                        labelSpanL="3"
+                        labelSpanM="3"
+                        columnsL="2"
+                        columnsM="2">
+                        <f:content>
+                            <core:Title id="_IDGenTitle5" text="" />
+                            <m:Label id="_IDGenLabel39" text="Purchase Order" design="Bold" />
+                            <m:Input
+                                id="_IDGenInput14"
+                                width="100%"
+                                value="{Header>/PurchaseOrder}"
+                                showValueHelp="true"
+                                editable="{= !${Header>/orderSelected}}"
+                                required="true"
+                                valueHelpRequest=".onPurchaseValueHelp"
+                            />
+                            <m:Label id="_IDGenLabel40" text="Document Date" />
+                            <m:DatePicker
+                                id="_IDGenDatePickerPO"
+                                value="{Header>/DocumentDate}"
+                                valueFormat="yyyy-MM-ddTHH:mm:ss"
+                                displayFormat="dd-MM-yyyy"
+                                enabled="{Header>/fieldsEnabled}"
+                            />
+                            <m:Label id="_IDGenLabel41" text="Posting Date" />
+                            <m:DatePicker
+                                id="_IDGenDatePicker2"
+                                valueFormat="yyyy-MM-ddTHH:mm:ss"
+                                displayFormat="dd-MM-yyyy"
+                                value="{Header>/PostingDate}"
+                                enabled="{Header>/fieldsEnabled}"
+                            />
+                            <m:Label id="_IDGenLabel42" text="Nos/Pallet(Dist. QTY)" />
+                            <m:Input id="_IDGenInput15" change="PalletChange" value="{Header>/FilledQty}" />
+                            <core:Title id="_IDGenTitle6" text="" />
+                            <m:Label id="_IDGenLabel43" text="Movement Type" design="Bold" />
+                            <m:Input id="_IDGenInput16" width="120px" value="{Header>/MoveType}" editable="false" />
+                            <m:Label id="_IDGenLabel44" text="Supplier" />
+                            <m:Input id="_IDGenInput17" value="{Header>/SupplierDisplay}" editable="false" />
+                            <m:Label id="_IDGenLabel45" text="Gate Entry Number" />
+                            <m:Input id="_IDGenInput9PO" value="{Header>/HeaderText}" />
+                        </f:content>
+                    </f:SimpleForm>
+                </m:content>
+            </m:Panel>
+
+            <m:Panel
+                id="_IDGenPanel5"
+                headerText="{= 'Material Details (' + ${Header>/PurchaseItemsCount} + ')'}"
+                expandable="true"
+                expanded="false"
+                class="sapUiResponsiveMargin"
+                width="auto"
+            >
+                <m:content>
+                    <table:Table
+                        id="_IDGenTable2"
+                        rows="{Header>/ProdItems}"
+                        selectionMode="Single"
+                        width="100%"
+                    >
+                        <table:extension>
+                            <m:OverflowToolbar id="_IDGenTBMaterial">
+                                <m:ToolbarSpacer id="_IDGenTSSMaterial" />
+                                <m:Button
+                                    id="_IDGenBtnAddBatchDist"
+                                    text="Add to Batch Distribution"
+                                    icon="sap-icon://add"
+                                    type="Emphasized"
+                                    press="onAddToBatchDist"
+                                    enabled="{Header>/orderSelected}"
+                                />
+                            </m:OverflowToolbar>
+                        </table:extension>
+                        <table:rowMode>
+                            <rowmodes:Fixed id="_IDGenFixed3po" rowCount="5" />
+                        </table:rowMode>
+                        <table:columns>
+                            <table:Column id="_IDGenColumn12po" width="11%">
+                                <m:Label id="_IDGenLabel27po" text="Material" />
+                                <table:template><m:Text id="_IDGenText10po" text="{Header>Material}" /></table:template>
+                            </table:Column>
+                            <table:Column id="_IDGenColumn26po" width="14%">
+                                <m:Label id="_IDGenLabel36po" text="Name" />
+                                <table:template><m:Text id="_IDGenText17po" text="{Header>ProductName}" /></table:template>
+                            </table:Column>
+                            <table:Column id="_IDGenColumn20po" width="6%">
+                                <m:Label id="_IDGenLabel32po" text="Plant" />
+                                <table:template><m:Text id="_IDGenText15po" text="{Header>Plant}" /></table:template>
+                            </table:Column>
+                            <table:Column id="_IDGenColumn21po" width="10%">
+                                <m:Label id="_IDGenLabel33po" text="Storage Loc." />
+                                <table:template>
+                                    <m:Input id="_IDGenText16po" value="{Header>Location}" submit="onRowEnter" />
+                                </table:template>
+                            </table:Column>
+                            <table:Column id="_IDGenColumnOrdQty" width="10%">
+                                <m:Label id="_IDGenLabelOrdQty" text="Order Qty" />
+                                <table:template><m:Text id="_IDGenTextOrdQty" text="{Header>OrderQuantity}" /></table:template>
+                            </table:Column>
+                            <table:Column id="_IDGenColumnDistQty" width="10%">
+                                <m:Label id="_IDGenLabelDistQty" text="Dist. Qty" />
+                                <table:template><m:Text id="_IDGenTextDistQty" text="{Header>DistributedQty}" /></table:template>
+                            </table:Column>
+                            <table:Column id="_IDGenColumn17po" width="6%">
+                                <m:Label id="_IDGenLabel29po" text="Unit" />
+                                <table:template><m:Text id="_IDGenText12po" text="{Header>Unit}" /></table:template>
+                            </table:Column>
+                            <table:Column id="_IDGenColumn171po" width="10%">
+                                <m:Label id="_IDGenLabel291po" text="Conv. Qty" />
+                                <table:template><m:Text id="_IDGenText121po" text="{Header>ConvertedQuantity}" /></table:template>
+                            </table:Column>
+                            <table:Column id="_IDGenColumn811po" width="10%">
+                                <m:Label id="_IDGenLabel1511po" text="Conv. Unit" />
+                                <table:template><m:Text id="_IDGenInput511po" text="{Header>AlternativeUnit}" /></table:template>
+                            </table:Column>
+                        </table:columns>
+                    </table:Table>
+                </m:content>
+            </m:Panel>
+
+            <m:Panel
+                id="_IDGenPanelBatchDist"
+                headerText="Batch Distribution"
+                expandable="true"
+                expanded="false"
+                class="sapUiResponsiveMargin"
+                width="auto"
+            >
+                <m:content>
+                    <table:Table
+                        id="_IDGenTableBatchDist"
+                        rows="{Header>/BatchDistItems}"
+                        selectionMode="Single"
+                        width="100%"
+                        showNoData="true"
+                        rowSelectionChange="onBatchDistRowSelect"
+                    >
+                        <table:extension>
+                            <m:OverflowToolbar id="_IDGenTBBatchDist">
+                                <m:ToolbarSpacer id="_IDGenTSSBatchDist" />
+                                <m:Button
+                                    id="_IDGenBtnDelBatchDist"
+                                    text="Delete"
+                                    icon="sap-icon://delete"
+                                    type="Reject"
+                                    press="onDeleteBatchDistRow"
+                                    enabled="{Header>/orderSelected}"
+                                />
+                            </m:OverflowToolbar>
+                        </table:extension>
+                        <table:rowMode>
+                            <rowmodes:Fixed id="_IDGenFixedBatchDist" rowCount="5" />
+                        </table:rowMode>
+                        <table:columns>
+                            <table:Column id="_IDGenColBD1" width="11%">
+                                <m:Label id="_IDGenLblBD1" text="Material" />
+                                <table:template><m:Text id="_IDGenTxtBD1" text="{Header>Material}" /></table:template>
+                            </table:Column>
+                            <table:Column id="_IDGenColBD2" width="12%">
+                                <m:Label id="_IDGenLblBD2" text="Material Name" />
+                                <table:template><m:Text id="_IDGenTxtBD2" text="{Header>ProductName}" /></table:template>
+                            </table:Column>
+                            <table:Column id="_IDGenColBD3" width="11%">
+                                <m:Label id="_IDGenLblBD3" text="Batch" />
+                                <table:template><m:Text id="_IDGenTxtBD3" text="{Header>Batch}" /></table:template>
+                            </table:Column>
+                            <table:Column id="_IDGenColBD4" width="6%">
+                                <m:Label id="_IDGenLblBD4" text="Plant" />
+                                <table:template><m:Text id="_IDGenTxtBD4" text="{Header>Plant}" /></table:template>
+                            </table:Column>
+                            <table:Column id="_IDGenColBD5" width="10%">
+                                <m:Label id="_IDGenLblBD5" text="Storage Loc." />
+                                <table:template>
+                                    <m:Input id="_IDGenInpBD5" value="{Header>Location}" />
+                                </table:template>
+                            </table:Column>
+                            <table:Column id="_IDGenColBD6" width="9%">
+                                <m:Label id="_IDGenLblBD6" text="Quantity" />
+                                <table:template>
+                                    <m:Input
+                                        id="_IDGenInpBD6"
+                                        value="{Header>DistQuantity}"
+                                        type="Number"
+                                        change="onBatchDistQtyChange"
+                                        submit="onBatchDistRowEnter"
+                                    />
+                                </table:template>
+                            </table:Column>
+                            <table:Column id="_IDGenColBD7" width="6%">
+                                <m:Label id="_IDGenLblBD7" text="Unit" />
+                                <table:template><m:Text id="_IDGenTxtBD7" text="{Header>Unit}" /></table:template>
+                            </table:Column>
+                            <table:Column id="_IDGenColBD8" width="9%">
+                                <m:Label id="_IDGenLblBD8" text="Dist. %" />
+                                <table:template><m:Text id="_IDGenTxtBD8" text="{Header>DistPercent}" /></table:template>
+                            </table:Column>
+                            <table:Column id="_IDGenColBD9" width="9%">
+                                <m:Label id="_IDGenLblBD9" text="Conv. Qty" />
+                                <table:template><m:Text id="_IDGenTxtBD9" text="{Header>ConvertedQuantity}" /></table:template>
+                            </table:Column>
+                            <table:Column id="_IDGenColBD10" width="10%">
+                                <m:Label id="_IDGenLblBD10" text="Conv. Unit" />
+                                <table:template><m:Text id="_IDGenTxtBD10" text="{Header>AlternativeUnit}" /></table:template>
+                            </table:Column>
+                        </table:columns>
+                    </table:Table>
+                </m:content>
+            </m:Panel>
+
+            <m:Panel
+                id="_IDGenPanelBatchClass"
+                headerText="{= 'Batch Classification' + (${Header>/ActiveClassMaterial} ? ' \u2013 ' + ${Header>/ActiveClassMaterial} : '')}"
+                expandable="true"
+                expanded="false"
+                class="sapUiResponsiveMargin"
+                width="auto"
+            >
+                <m:content>
+                    <table:Table
+                        id="_IDGenTableBatchClass"
+                        rows="{Header>/BatchClassRows}"
+                        selectionMode="None"
+                        width="100%"
+                        showNoData="true"
+                    >
+                        <table:extension>
+                            <m:OverflowToolbar id="_IDGenTBBatchClass">
+                                <m:ToolbarSpacer id="_IDGenTSSBatchClass" />
+                                <m:Button
+                                    id="_IDGenBtnSaveClassification"
+                                    text="Save Characteristics"
+                                    icon="sap-icon://save"
+                                    type="Emphasized"
+                                    press="onSaveBatchClassification"
+                                    enabled="{Header>/orderSelected}"
+                                />
+                            </m:OverflowToolbar>
+                        </table:extension>
+                        <table:rowMode>
+                            <rowmodes:Fixed id="_IDGenFixedBatchClass" rowCount="5" />
+                        </table:rowMode>
+                        <table:columns>
+                            <table:Column id="_IDGenColBCMat" width="10rem">
+                                <m:Label id="_IDGenLblBCMat" text="Material" />
+                                <table:template>
+                                    <m:Text id="_IDGenTxtBCMat" text="{Header>Material}" />
+                                </table:template>
+                            </table:Column>
+                            <table:Column id="_IDGenColBCBatch" width="10rem">
+                                <m:Label id="_IDGenLblBCBatch" text="Batch" />
+                                <table:template>
+                                    <m:Text id="_IDGenTxtBCBatch" text="{Header>Batch}" />
+                                </table:template>
+                            </table:Column>
+                            <table:Column id="_IDGenColBCQty" width="8rem">
+                                <m:Label id="_IDGenLblBCQty" text="Quantity" />
+                                <table:template>
+                                    <m:Text id="_IDGenTxtBCQty" text="{Header>DistQuantity}" />
+                                </table:template>
+                            </table:Column>
+                            <!-- Dynamic characteristic columns added by controller -->
+                        </table:columns>
+                    </table:Table>
+                </m:content>
+            </m:Panel>
+
+        </m:content>
+    </m:Page>
 </mvc:View>
